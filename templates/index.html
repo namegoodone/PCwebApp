@@ -212,10 +212,19 @@
                     if (events[dateStr].length > 3) ec.innerHTML += `<div class="text-[8px] sm:text-[9px] text-gray-400 font-bold pl-0.5 sm:pl-1">+${events[dateStr].length-3} 更多...</div>`;
                     dayCell.appendChild(ec);
                 }
-                // 使用 pointerdown 事件，兼容移动端触摸
-                dayCell.addEventListener('pointerdown', (e) => {
-                    e.preventDefault(); // 防止移动端双击缩放
+                dayCell.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     showPopup(e, dateStr, dayCell);
+                });
+                
+                dayCell.addEventListener('mouseenter', (e) => {
+                    showPopup(e, dateStr, dayCell);
+                });
+                
+                dayCell.addEventListener('mouseleave', (e) => {
+                    if (!e.relatedTarget || !e.relatedTarget.closest('#hover-popup')) {
+                        hidePopup();
+                    }
                 });
                 calendar.appendChild(dayCell);
             }
@@ -242,9 +251,8 @@
         
         function showPopup(e, dateStr, clickedElement) {
             clearTimeout(popupHideTimeout); activeDate = dateStr;
-            const pd = document.getElementById('popup-date'), pe = document.getElementById('popup-events'), ph = document.getElementById('popup-holiday');
+            const pd = document.getElementById('popup-date'), pe = document.getElementById('popup-events');
             pd.innerText = dateStr; pe.innerHTML = '';
-            if (holidays[dateStr]) { ph.innerText = holidays[dateStr]; ph.classList.remove('hidden'); } else ph.classList.add('hidden');
             if (events[dateStr]) {
                 events[dateStr].forEach(ev => {
                     const item = document.createElement('div');
@@ -255,26 +263,15 @@
             } else pe.innerHTML = '<div class="text-xs text-gray-400 italic py-4 sm:py-6 text-center">今日暂无安排</div>';
             popup.style.display = 'block';
             
-            // 智能定位：桌面端用触摸位置，移动端用元素位置
-            if (e.touches && e.touches.length > 0) {
-                // 移动端：使用被点击元素的位置
-                const rect = clickedElement.getBoundingClientRect();
-                let x = rect.left;
-                let y = rect.bottom + 10; // 下方 10px
-                
-                // 确保不超出屏幕
-                if (x + 250 > window.innerWidth) x = window.innerWidth - 260;
-                if (y + 300 > window.innerHeight) y = window.innerHeight - 310;
-                
-                popup.style.left = x + 'px'; 
-                popup.style.top = y + 'px';
-            } else {
-                // 桌面端：使用鼠标位置
-                let x = e.clientX + 15, y = e.clientY + 15;
-                if (x + 260 > window.innerWidth) x = e.clientX - 240;
-                if (y + 300 > window.innerHeight) y = e.clientY - (popup.offsetHeight || 250);
-                popup.style.left = x + 'px'; popup.style.top = y + 'px';
-            }
+            const rect = clickedElement.getBoundingClientRect();
+            let x = rect.left;
+            let y = rect.bottom + 10;
+            
+            if (x + 260 > window.innerWidth) x = window.innerWidth - 270;
+            if (y + 300 > window.innerHeight) y = window.innerHeight - 310;
+            
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
         }
 
         function hidePopup() { popupHideTimeout = setTimeout(() => { if (!popup.matches(':hover')) popup.style.display = 'none'; }, 100); }
@@ -365,7 +362,14 @@
         document.getElementById('prevMonth').onclick = () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); };
         document.getElementById('nextMonth').onclick = () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); };
         document.getElementById('todayBtn').onclick = () => { currentDate = new Date(); renderCalendar(); };
-        window.onclick = (e) => { if (e.target.id === 'ai-modal') closeAIModal(); };
+        
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'ai-modal') closeAIModal();
+            const popupEl = document.getElementById('hover-popup');
+            if (!e.target.closest('.day-cell') && !e.target.closest('#hover-popup')) {
+                popupEl.style.display = 'none';
+            }
+        });
 
         fetchEvents();
     </script>
