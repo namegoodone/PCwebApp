@@ -73,13 +73,31 @@
             to { opacity: 0.2; }
         }
         .timer-fading { animation: fadeOutTimer 5s linear forwards; }
+
+        /* 事件卡片删除按钮 */
+        @keyframes trashFadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.8); }
+        }
+        .trash-fading { animation: trashFadeOut 1.5s ease-out forwards; }
+
+        .event-trash-btn {
+            transition: all 0.3s ease;
+        }
+
+        @media (min-width: 769px) {
+            .event-card:hover .event-trash-btn {
+                opacity: 1 !important;
+                animation: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 font-sans overflow-x-hidden">
 
     <!-- Header -->
     <header class="bg-white border-b h-20 flex items-center justify-between px-4 sm:px-6 shadow-sm z-10 sticky top-0">
-        <div class="flex items-center gap-2 sm:gap-6">
+        <div class="flex items-center gap-4 sm:gap-8">
             <h1 class="text-xl sm:text-2xl font-extrabold text-indigo-600 flex items-center gap-1 sm:gap-2">
                 <i class="fas fa-calendar-check text-sm sm:text-xl"></i> <span class="hidden sm:inline">MasterTime</span>
             </h1>
@@ -280,9 +298,30 @@
             document.getElementById('empty-state').classList.add('hidden');
             all.forEach(ev => {
                 const card = document.createElement('div');
-                card.className = 'bg-white p-4 sm:p-6 rounded-3xl border border-gray-100 shadow-sm relative group';
+                card.className = 'bg-white p-4 sm:p-6 rounded-3xl border border-gray-100 shadow-sm relative event-card';
                 const pColor = ev.priority == 1 ? 'red' : (ev.priority == 2 ? 'amber' : 'blue');
-                card.innerHTML = `<div class="flex justify-between items-start mb-3 sm:mb-4"><span class="text-[10px] sm:text-xs font-black text-gray-400">${ev.date}</span><span class="bg-${pColor}-100 text-${pColor}-600 text-[10px] font-black px-1.5 sm:px-2 py-1 rounded-lg">P${ev.priority}</span></div><h4 class="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">${ev.title}</h4><button onclick="handleDelete('${ev.date}', ${ev.id})" class="absolute top-3 sm:top-4 right-3 sm:right-4 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500"><i class="fas fa-trash-alt"></i></button>`;
+                card.innerHTML = `<div class="flex justify-between items-start mb-3 sm:mb-4"><span class="text-[10px] sm:text-xs font-black text-gray-400">${ev.date}</span><span class="bg-${pColor}-100 text-${pColor}-600 text-[10px] font-black px-1.5 sm:px-2 py-1 rounded-lg">P${ev.priority}</span></div><h4 class="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">${ev.title}</h4><button id="trash-${ev.id}" onclick="handleDelete('${ev.date}', ${ev.id})" class="event-trash-btn absolute bottom-3 sm:bottom-4 right-3 sm:right-4 opacity-0 text-gray-400 hover:text-red-500 text-base sm:text-lg"><i class="fas fa-trash-alt"></i></button>`;
+                
+                card.addEventListener('click', (e) => {
+                    const trashBtn = card.querySelector('.event-trash-btn');
+                    if (e.target !== trashBtn && !trashBtn.contains(e.target)) {
+                        trashBtn.classList.remove('trash-fading');
+                        trashBtn.style.opacity = '1';
+                        trashBtn.style.animation = 'none';
+                        clearTimeout(trashBtn.hideTimeout);
+                        trashBtn.hideTimeout = setTimeout(() => {
+                            trashBtn.classList.add('trash-fading');
+                        }, 3000);
+                    }
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    const trashBtn = card.querySelector('.event-trash-btn');
+                    if (window.innerWidth >= 769) {
+                        trashBtn.classList.add('trash-fading');
+                    }
+                });
+
                 list.appendChild(card);
             });
         }
