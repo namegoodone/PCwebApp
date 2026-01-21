@@ -79,16 +79,20 @@
             from { opacity: 1; transform: scale(1); }
             to { opacity: 0; transform: scale(0.8); }
         }
-        .trash-fading { animation: trashFadeOut 1.5s ease-out forwards; }
+        .trash-fading { animation: trashFadeOut 1.5s ease-out forwards !important; }
 
         .event-trash-btn {
             transition: all 0.3s ease;
+            opacity: 0;
         }
 
         @media (min-width: 769px) {
+            .event-trash-btn {
+                opacity: 0 !important;
+            }
             .event-card:hover .event-trash-btn {
                 opacity: 1 !important;
-                animation: none;
+                animation: none !important;
             }
         }
     </style>
@@ -308,8 +312,12 @@
                         trashBtn.classList.remove('trash-fading');
                         trashBtn.style.opacity = '1';
                         trashBtn.style.animation = 'none';
+                        trashBtn.style.transform = 'scale(1)';
                         clearTimeout(trashBtn.hideTimeout);
                         trashBtn.hideTimeout = setTimeout(() => {
+                            trashBtn.style.opacity = '';
+                            trashBtn.style.animation = '';
+                            trashBtn.style.transform = '';
                             trashBtn.classList.add('trash-fading');
                         }, 3000);
                     }
@@ -318,6 +326,10 @@
                 card.addEventListener('mouseleave', () => {
                     const trashBtn = card.querySelector('.event-trash-btn');
                     if (window.innerWidth >= 769) {
+                        clearTimeout(trashBtn.hideTimeout);
+                        trashBtn.style.opacity = '';
+                        trashBtn.style.animation = '';
+                        trashBtn.style.transform = '';
                         trashBtn.classList.add('trash-fading');
                     }
                 });
