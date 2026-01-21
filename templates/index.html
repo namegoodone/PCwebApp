@@ -154,6 +154,42 @@
         </div>
     </div>
 
+    <!-- Add Event Modal -->
+    <div id="add-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden z-[70] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 sm:mb-6">
+                <h3 class="text-lg sm:text-2xl font-black text-gray-800 flex items-center gap-2 sm:gap-3">
+                    <span class="p-1.5 sm:p-2 bg-indigo-100 rounded-lg text-indigo-600 text-sm sm:text-base"><i class="fas fa-plus"></i></span>
+                    <span>新建事项</span>
+                </h3>
+                <button onclick="closeAddModal()" class="text-gray-400 hover:text-gray-600 text-base sm:text-xl"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="mb-4">
+                <label class="text-xs sm:text-sm font-bold text-gray-600 mb-2 block">事项内容</label>
+                <input type="text" id="event-title" onkeypress="if(event.key==='Enter')submitAddEvent()" class="w-full border-2 border-gray-100 rounded-2xl p-3 sm:p-4 focus:border-indigo-500 focus:ring-0 outline-none transition-colors text-sm sm:text-base" placeholder="输入事项内容...">
+            </div>
+            <div class="mb-4 sm:mb-6">
+                <label class="text-xs sm:text-sm font-bold text-gray-600 mb-2 block">优先级</label>
+                <div class="flex gap-2">
+                    <button onclick="selectPriority(1)" id="priority-1" class="flex-1 py-2 sm:py-3 rounded-xl border-2 border-gray-100 font-bold text-sm sm:text-base transition-colors hover:border-red-500 text-gray-600">
+                        P1 紧急
+                    </button>
+                    <button onclick="selectPriority(2)" id="priority-2" class="flex-1 py-2 sm:py-3 rounded-xl border-2 border-indigo-500 bg-indigo-50 font-bold text-sm sm:text-base transition-colors text-indigo-600">
+                        P2 普通
+                    </button>
+                    <button onclick="selectPriority(3)" id="priority-3" class="flex-1 py-2 sm:py-3 rounded-xl border-2 border-gray-100 font-bold text-sm sm:text-base transition-colors hover:border-blue-500 text-gray-600">
+                        P3 低
+                    </button>
+                </div>
+            </div>
+            <div>
+                <button onclick="submitAddEvent()" class="w-full bg-indigo-600 text-white py-3 sm:py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 text-sm sm:text-lg">
+                    <i class="fas fa-check"></i> 确认创建
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Undo Toast Container -->
     <div id="undo-container" class="fixed bottom-6 sm:bottom-10 right-4 sm:right-10 z-[100] flex flex-col gap-2 sm:gap-3"></div>
 
@@ -161,6 +197,7 @@
         let currentDate = new Date();
         let events = {};
         let pendingDeletes = new Map();
+        let selectedPriority = 2;
         
         const holidays = {
             "2026-01-01": "元旦", "2026-01-02": "元旦", "2026-01-03": "元旦",
@@ -344,8 +381,35 @@
         }
 
         function showManualAdd() {
-            const t = prompt("事项内容:");
-            if (t) addEvent(activeDate, t, prompt("优先级 (1:紧急, 2:普通, 3:有空再做)", "2"));
+            selectedPriority = 2;
+            selectPriority(2);
+            document.getElementById('event-title').value = '';
+            document.getElementById('add-modal').classList.remove('hidden');
+            document.getElementById('event-title').focus();
+        }
+
+        function closeAddModal() { document.getElementById('add-modal').classList.add('hidden'); }
+
+        function selectPriority(p) {
+            selectedPriority = p;
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`priority-${i}`);
+                if (i === p) {
+                    btn.className = `flex-1 py-2 sm:py-3 rounded-xl border-2 font-bold text-sm sm:text-base transition-colors ${i===1?'border-red-500 bg-red-50 text-red-600':(i===2?'border-indigo-500 bg-indigo-50 text-indigo-600':'border-blue-500 bg-blue-50 text-blue-600')}`;
+                } else {
+                    btn.className = 'flex-1 py-2 sm:py-3 rounded-xl border-2 border-gray-100 font-bold text-sm sm:text-base transition-colors hover:border-gray-300 text-gray-600';
+                }
+            }
+        }
+
+        async function submitAddEvent() {
+            const title = document.getElementById('event-title').value.trim();
+            if (!title) {
+                alert('请输入事项内容');
+                return;
+            }
+            await addEvent(activeDate, title, selectedPriority);
+            closeAddModal();
         }
 
         function openAIModal() { document.getElementById('ai-modal').classList.remove('hidden'); document.getElementById('ai-input').focus(); }
