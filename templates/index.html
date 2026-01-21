@@ -84,12 +84,14 @@
         .event-trash-btn {
             transition: all 0.3s ease;
             opacity: 0;
+            pointer-events: auto;
         }
 
         @media (min-width: 769px) {
             .event-card:hover .event-trash-btn {
-                opacity: 1;
-                animation: none;
+                opacity: 1 !important;
+                animation: none !important;
+                pointer-events: auto !important;
             }
             .event-trash-btn.trash-fading {
                 animation: trashFadeOut 1.5s ease-out forwards !important;
@@ -100,6 +102,31 @@
             .event-trash-btn.trash-fading {
                 animation: trashFadeOut 0.5s ease-out forwards !important;
             }
+        }
+
+        /* 滑动删除动画 */
+        .event-card.swiping {
+            transition: transform 0.1s ease-out;
+        }
+        .event-card.deleting {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+
+        /* 日历容器过渡效果 */
+        #calendar.slide-left {
+            animation: slideLeft 0.3s ease-out;
+        }
+        #calendar.slide-right {
+            animation: slideRight 0.3s ease-out;
+        }
+
+        @keyframes slideLeft {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideRight {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
@@ -309,36 +336,88 @@
             all.forEach(ev => {
                 const card = document.createElement('div');
                 card.className = 'bg-white p-4 sm:p-6 rounded-3xl border border-gray-100 shadow-sm relative event-card';
+                card.dataset.date = ev.date;
+                card.dataset.id = ev.id;
                 const pColor = ev.priority == 1 ? 'red' : (ev.priority == 2 ? 'amber' : 'blue');
                 card.innerHTML = `<div class="flex justify-between items-start mb-3 sm:mb-4"><span class="text-[10px] sm:text-xs font-black text-gray-400">${ev.date}</span><span class="bg-${pColor}-100 text-${pColor}-600 text-[10px] font-black px-1.5 sm:px-2 py-1 rounded-lg">P${ev.priority}</span></div><h4 class="text-base sm:text-lg font-bold text-gray-800 mb-3 sm:mb-4">${ev.title}</h4><button id="trash-${ev.id}" onclick="handleDelete('${ev.date}', ${ev.id})" class="event-trash-btn absolute bottom-3 sm:bottom-4 right-3 sm:right-4 opacity-0 text-gray-400 hover:text-red-500 text-base sm:text-lg"><i class="fas fa-trash-alt"></i></button>`;
                 
-                card.addEventListener('click', (e) => {
-                    const trashBtn = card.querySelector('.event-trash-btn');
-                    if (e.target !== trashBtn && !trashBtn.contains(e.target)) {
-                        trashBtn.classList.remove('trash-fading');
-                        trashBtn.style.opacity = '1';
-                        trashBtn.style.animation = 'none';
-                        trashBtn.style.transform = 'scale(1)';
-                        clearTimeout(trashBtn.hideTimeout);
-                        trashBtn.hideTimeout = setTimeout(() => {
-                            trashBtn.style.opacity = '';
-                            trashBtn.style.animation = '';
-                            trashBtn.style.transform = '';
-                            trashBtn.classList.add('trash-fading');
-                        }, 2000);
-                    }
-                });
+                if (window.innerWidth < 769) {
+                    let startX, startY, isDragging = false, diffX = 0;
+                    
+                    card.addEventListener('touchstart', (e) => {
+                        startX = e.touches[0].clientX;
+                        startY = e.touches[0].clientY;
+                        isDragging = false;
+                        diffX = 0;
+                        card.classList.add('swiping');
+                        card.style.transform = 'translateX(0)';
+                    }, { passive: true });
+                    
+                    card.addEventListener('touchmove', (e) => {
+                        if (!isDragging) {
+                            const diffY = Math.abs(e.touches[0].clientY - startY);
+                            const diffX = Math.abs(e.touches[0].clientX - startX);
+                            if (diffX > diffY && diffX > 10) {
+                                isDragging = true;
+                            }
+                        }
+                        if (isDragging) {
+                            e.preventDefault();
+                            diffX = e.touches[0].clientX - startX;
+                            if (diffX < -100) {
+                                card.style.transform = 'translateX(' + diffX + 'px)';
+                                card.style.opacity = 1 - Math.abs(diffX) / 200;
+                            } else if (diffX > 100) {
+                                card.style.transform = 'translateX(' + diffX + 'px)';
+                                card.style.opacity = 1 - Math.abs(diffX) / 200;
+                            } else {
+                                card.style.transform = 'translateX(' + diffX + 'px)';
+                            }
+                        }
+                    }, { passive: false });
+                    
+                    card.addEventListener('touchend', () => {
+                        card.classList.remove('swiping');
+                        if (Math.abs(diffX) > 100) {
+                            card.classList.add('deleting');
+                            card.style.transform = 'translateX(' + (diffX > 0 ? '' : '-') + '100%)';
+                            card.style.opacity = '0';
+                            setTimeout(() => {
+                                handleDelete(ev.date, ev.id);
+                            }, 300);
+                        } else {
+                            card.style.transform = 'translateX(0)';
+                            card.style.opacity = '1';
+                        }
+                    });
 
-                card.addEventListener('mouseleave', () => {
-                    const trashBtn = card.querySelector('.event-trash-btn');
-                    if (window.innerWidth >= 769) {
-                        clearTimeout(trashBtn.hideTimeout);
-                        trashBtn.style.opacity = '';
-                        trashBtn.style.animation = '';
-                        trashBtn.style.transform = '';
+                    card.addEventListener('click', (e) => {
+                        if (Math.abs(diffX) > 10) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return;
+                        }
+                        const trashBtn = card.querySelector('.event-trash-btn');
+                        if (e.target !== trashBtn && !trashBtn.contains(e.target)) {
+                            trashBtn.classList.remove('trash-fading');
+                            trashBtn.style.opacity = '1';
+                            trashBtn.style.animation = 'none';
+                            trashBtn.style.transform = 'scale(1)';
+                            clearTimeout(trashBtn.hideTimeout);
+                            trashBtn.hideTimeout = setTimeout(() => {
+                                trashBtn.style.opacity = '';
+                                trashBtn.style.animation = '';
+                                trashBtn.style.transform = '';
+                                trashBtn.classList.add('trash-fading');
+                            }, 2000);
+                        }
+                    });
+                } else {
+                    card.addEventListener('mouseleave', () => {
+                        const trashBtn = card.querySelector('.event-trash-btn');
                         trashBtn.classList.add('trash-fading');
-                    }
-                });
+                    });
+                }
 
                 list.appendChild(card);
             });
@@ -496,6 +575,51 @@
                 popupEl.style.display = 'none';
             }
         });
+
+        // 日历滑动功能（手机端）
+        if (window.innerWidth < 769) {
+            const calendar = document.getElementById('calendar');
+            let startX, startY, isSwipe = false;
+            
+            calendar.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                isSwipe = false;
+            }, { passive: true });
+            
+            calendar.addEventListener('touchmove', (e) => {
+                const diffX = Math.abs(e.touches[0].clientX - startX);
+                const diffY = Math.abs(e.touches[0].clientY - startY);
+                if (diffX > diffY && diffX > 30) {
+                    isSwipe = true;
+                }
+            }, { passive: true });
+            
+            calendar.addEventListener('touchend', (e) => {
+                if (isSwipe) {
+                    const endX = e.changedTouches[0].clientX;
+                    const diffX = endX - startX;
+                    
+                    if (Math.abs(diffX) > 80) {
+                        calendar.classList.remove('slide-left', 'slide-right');
+                        void calendar.offsetWidth;
+                        
+                        if (diffX > 0) {
+                            currentDate.setMonth(currentDate.getMonth() - 1);
+                            calendar.classList.add('slide-right');
+                        } else {
+                            currentDate.setMonth(currentDate.getMonth() + 1);
+                            calendar.classList.add('slide-left');
+                        }
+                        
+                        setTimeout(() => {
+                            renderCalendar();
+                            calendar.classList.remove('slide-left', 'slide-right');
+                        }, 50);
+                    }
+                }
+            });
+        }
 
         fetchEvents();
     </script>
